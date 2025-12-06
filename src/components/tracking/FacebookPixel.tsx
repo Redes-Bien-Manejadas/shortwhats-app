@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useCallback } from 'react';
 import Script from 'next/script';
 import { FacebookPixelConfig } from '@/lib/types';
 
@@ -23,26 +23,26 @@ export function FacebookPixel({ config, onPageView = false, onLead = false, cust
   // No renderizar si no hay pixel ID
   if (!pixelId) return null;
 
-  useEffect(() => {
-    // Verificar si fbq ya está disponible
-    if (typeof window !== 'undefined' && window.fbq) {
-      // Disparar ViewContent si está habilitado y se solicita
-      if (onPageView && viewContentEvent) {
-        window.fbq('track', 'ViewContent');
-        console.log('🎯 Facebook Pixel: ViewContent event fired');
-      }
+  // Callback que se ejecuta cuando el script termina de cargar
+  const handleScriptLoad = useCallback(() => {
+    if (typeof window === 'undefined' || !window.fbq) return;
 
-      // Disparar Lead si está habilitado y se solicita
-      if (onLead && leadEvent) {
-        window.fbq('track', 'Lead');
-        console.log('🎯 Facebook Pixel: Lead event fired');
-      }
+    // Disparar ViewContent si está habilitado y se solicita
+    if (onPageView && viewContentEvent) {
+      window.fbq('track', 'ViewContent');
+      console.log('🎯 Facebook Pixel: ViewContent event fired');
+    }
 
-      // Disparar evento personalizado si se especifica
-      if (customEventName && customEvents.includes(customEventName)) {
-        window.fbq('trackCustom', customEventName);
-        console.log(`🎯 Facebook Pixel: Custom event ${customEventName} fired`);
-      }
+    // Disparar Lead si está habilitado y se solicita
+    if (onLead && leadEvent) {
+      window.fbq('track', 'Lead');
+      console.log('🎯 Facebook Pixel: Lead event fired');
+    }
+
+    // Disparar evento personalizado si se especifica
+    if (customEventName && customEvents.includes(customEventName)) {
+      window.fbq('trackCustom', customEventName);
+      console.log(`🎯 Facebook Pixel: Custom event ${customEventName} fired`);
     }
   }, [onPageView, onLead, customEventName, viewContentEvent, leadEvent, customEvents]);
 
@@ -51,6 +51,7 @@ export function FacebookPixel({ config, onPageView = false, onLead = false, cust
       <Script
         id="facebook-pixel"
         strategy="afterInteractive"
+        onLoad={handleScriptLoad}
         dangerouslySetInnerHTML={{
           __html: `
             !function(f,b,e,v,n,t,s)
@@ -62,6 +63,7 @@ export function FacebookPixel({ config, onPageView = false, onLead = false, cust
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
             fbq('init', '${pixelId}');
+            fbq('track', 'PageView');
             console.log('🎯 Facebook Pixel initialized with ID: ${pixelId}');
           `,
         }}
