@@ -3,11 +3,11 @@ import { notFound } from 'next/navigation';
 import { RedirectPage } from '@/components/redirect/RedirectPage';
 
 type Props = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 export default async function RedirectPageRoute({ params }: Props) {
-  const { slug } = params;
+  const { slug } = await params;
 
   try {
     const link = await getLinkBySlug(slug);
