@@ -98,6 +98,14 @@ export function LinkDialog({ isOpen, setIsOpen, linkData, onSaveChanges, existin
     }
   }, [linkData, isOpen]);
 
+  // Update formData.type when activeTab changes (only for redirect/microlanding tabs)
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === 'redirect' || tab === 'microlanding') {
+      setFormData(prev => ({ ...prev, type: tab as 'redirect' | 'microlanding' }));
+    }
+  };
+
   const handleChange = (field: keyof LinkData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     
@@ -252,14 +260,18 @@ export function LinkDialog({ isOpen, setIsOpen, linkData, onSaveChanges, existin
               <Switch
                 id="link-type"
                 checked={formData.type === 'microlanding'}
-                onCheckedChange={(checked) => handleChange('type', checked ? 'microlanding' : 'redirect')}
+                onCheckedChange={(checked) => {
+                  const newType = checked ? 'microlanding' : 'redirect';
+                  handleChange('type', newType);
+                  setActiveTab(newType);
+                }}
               />
               <Label htmlFor="link-type">
                 {formData.type === 'microlanding' ? 'Microlanding Activado' : 'Redirección Directa'}
               </Label>
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="redirect">Redirección</TabsTrigger>
                 <TabsTrigger value="microlanding">Microlanding</TabsTrigger>
