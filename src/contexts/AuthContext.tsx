@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { getAdminCredentials } from '@/lib/api';
+import { verifyLogin } from '@/lib/api';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -51,38 +51,21 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (user: string, pass: string): Promise<boolean> => {
     try {
-      // Primero intentamos obtener credenciales del API
-      const apiCredentials = await getAdminCredentials();
+      console.log('🔐 Validando credenciales via API...');
+      const result = await verifyLogin(user, pass);
       
-      let isValid = false;
-      
-      if (apiCredentials) {
-        // Si existen credenciales configuradas, validamos contra ellas
-        console.log('🔐 Validando contra credenciales configuradas en API');
-        isValid = user === apiCredentials.username && pass === apiCredentials.password;
-      } else {
-        // Si no hay credenciales en API, usamos las por defecto
-        console.log('🔐 Validando contra credenciales por defecto');
-        isValid = user === 'admin' && pass === '123whats123';
-      }
-      
-      if (isValid) {
+      if (result.success) {
+        console.log('✅ Login exitoso');
         localStorage.setItem('whatsgrow_auth', 'true');
         setIsAuthenticated(true);
         router.push('/dashboard');
         return true;
       }
       
+      console.log('❌ Credenciales inválidas');
       return false;
     } catch (error) {
       console.error('❌ Error en login:', error);
-      // En caso de error, intentamos con credenciales por defecto
-      if (user === 'admin' && pass === '123whats123') {
-        localStorage.setItem('whatsgrow_auth', 'true');
-        setIsAuthenticated(true);
-        router.push('/dashboard');
-        return true;
-      }
       return false;
     }
   };
