@@ -1,4 +1,4 @@
-import { getLinkBySlug } from '@/lib/api';
+import { getLinkBySlug } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import { RedirectPage } from '@/components/redirect/RedirectPage';
 
@@ -6,28 +6,27 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
+// Revalidate every 60 seconds
+export const revalidate = 60;
+
 export default async function RedirectPageRoute({ params }: Props) {
   const { slug } = await params;
 
-  try {
-    const link = await getLinkBySlug(slug);
-    
-    if (!link) {
-      notFound();
-    }
-
-    // Construir URL de WhatsApp
-    const whatsappUrl = `https://wa.me/${link.phoneNumber}${link.message ? `?text=${encodeURIComponent(link.message)}` : ''}`;
-
-    return (
-      <RedirectPage 
-        targetUrl={whatsappUrl}
-        message={link.message}
-        facebookPixel={link.facebookPixel}
-      />
-    );
-  } catch (error) {
-    console.error('Error loading link:', error);
+  // Direct DB call (faster than API route)
+  const link = await getLinkBySlug(slug);
+  
+  if (!link) {
     notFound();
   }
+
+  // Construir URL de WhatsApp
+  const whatsappUrl = `https://wa.me/${link.phoneNumber}${link.message ? `?text=${encodeURIComponent(link.message)}` : ''}`;
+
+  return (
+    <RedirectPage 
+      targetUrl={whatsappUrl}
+      message={link.message}
+      facebookPixel={link.facebookPixel}
+    />
+  );
 }
