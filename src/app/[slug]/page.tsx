@@ -3,11 +3,11 @@ import { notFound, redirect } from 'next/navigation';
 import { MicrolandingPage } from '@/components/microlanding/MicrolandingPage';
 
 type Props = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 export default async function SlugPage({ params }: Props) {
-  const { slug } = params;
+  const { slug } = await params;
 
   if (!slug) {
     notFound();

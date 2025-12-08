@@ -177,7 +177,7 @@ async function main() {
   console.log('🚀 Starting migration from JSON to PostgreSQL...\n');
   
   // Check for DATABASE_URL
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = 'postgresql://neondb_owner:npg_YVaLzU9xD3Mn@ep-quiet-snow-ac4s8u6f-pooler.sa-east-1.aws.neon.tech/shortwhats?sslmode=require&channel_binding=require';
   if (!databaseUrl) {
     console.error('❌ DATABASE_URL environment variable is not set');
     console.error('   Set it with: export DATABASE_URL="postgresql://..."');

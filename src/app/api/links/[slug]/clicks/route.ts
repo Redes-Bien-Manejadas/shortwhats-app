@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { incrementClicks } from '@/lib/db';
 
 interface RouteParams {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 // POST /api/links/[slug]/clicks - Increment click count
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const { slug } = params;
+    const { slug } = await params;
     
     const result = await incrementClicks(slug);
     

@@ -3,13 +3,13 @@ import { getLinkBySlug, updateLink, deleteLink } from '@/lib/db';
 import type { LinkData } from '@/lib/types';
 
 interface RouteParams {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 // GET /api/links/[slug] - Get a single link by slug
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const { slug } = params;
+    const { slug } = await params;
     
     const link = await getLinkBySlug(slug);
     
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // PUT /api/links/[slug] - Update a link
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const { slug } = params;
+    const { slug } = await params;
     const body = await request.json();
     const linkData: LinkData = body;
     
@@ -56,7 +56,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/links/[slug] - Delete a link
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const { slug } = params;
+    const { slug } = await params;
     
     const result = await deleteLink(slug);
     

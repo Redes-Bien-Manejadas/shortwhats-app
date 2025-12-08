@@ -29,41 +29,44 @@ interface DBLink {
   updated_at: string;
 }
 
+// The view returns camelCase keys in the JSON objects
 interface DBMicrolandingConfig {
-  show_logo: boolean;
-  show_image: boolean;
-  show_header_text: boolean;
-  show_subheader_text: boolean;
-  show_footer_text: boolean;
-  logo_url: string;
-  image_url: string;
-  logo_size: string;
-  logo_glassmorphism: boolean;
-  logo_glass_opacity: number;
-  logo_vertical_position: number;
-  header_text: string;
-  subheader_text: string;
+  showLogo: boolean;
+  showImage: boolean;
+  showHeaderText: boolean;
+  showSubheaderText: boolean;
+  showFooterText: boolean;
+  logoUrl: string;
+  imageUrl: string;
+  logoSize: string;
+  logoGlassmorphism: boolean;
+  logoGlassOpacity: number;
+  logoVerticalPosition: number;
+  headerText: string;
+  subheaderText: string;
   title: string;
   description: string;
-  description_bold: boolean;
-  description_underline: boolean;
-  footer_text: string;
-  footer_text_size: number;
-  button_text: string;
-  button_icon: string;
-  button_border_radius: number;
-  color_primary: string;
-  color_background: string;
-  color_text: string;
-  color_button_background: string;
-  color_button_text: string;
+  descriptionBold: boolean;
+  descriptionUnderline: boolean;
+  footerText: string;
+  footerTextSize: number;
+  buttonText: string;
+  buttonIcon: string;
+  buttonBorderRadius: number;
+  colors: {
+    primary: string;
+    background: string;
+    text: string;
+    buttonBackground: string;
+    buttonText: string;
+  };
 }
 
 interface DBFacebookPixelConfig {
-  pixel_id: string;
-  view_content_event: boolean;
-  lead_event: boolean;
-  custom_events: string[];
+  pixelId: string;
+  viewContentEvent: boolean;
+  leadEvent: boolean;
+  customEvents: string[];
 }
 
 interface DBLinkComplete extends DBLink {
@@ -72,44 +75,52 @@ interface DBLinkComplete extends DBLink {
 }
 
 function dbToLinkData(row: DBLinkComplete): LinkData {
-  const microlandingConfig: MicrolandingConfig = row.microlanding_config ? {
-    showLogo: row.microlanding_config.show_logo,
-    showImage: row.microlanding_config.show_image,
-    showHeaderText: row.microlanding_config.show_header_text,
-    showSubheaderText: row.microlanding_config.show_subheader_text,
-    showFooterText: row.microlanding_config.show_footer_text,
-    logoUrl: row.microlanding_config.logo_url,
-    imageUrl: row.microlanding_config.image_url,
-    logoSize: row.microlanding_config.logo_size as MicrolandingConfig['logoSize'],
-    logoGlassmorphism: row.microlanding_config.logo_glassmorphism,
-    logoGlassOpacity: row.microlanding_config.logo_glass_opacity,
-    logoVerticalPosition: row.microlanding_config.logo_vertical_position,
-    headerText: row.microlanding_config.header_text,
-    subheaderText: row.microlanding_config.subheader_text,
-    title: row.microlanding_config.title,
-    description: row.microlanding_config.description,
-    descriptionBold: row.microlanding_config.description_bold,
-    descriptionUnderline: row.microlanding_config.description_underline,
-    footerText: row.microlanding_config.footer_text,
-    footerTextSize: row.microlanding_config.footer_text_size,
-    buttonText: row.microlanding_config.button_text,
-    buttonIcon: row.microlanding_config.button_icon as MicrolandingConfig['buttonIcon'],
-    buttonBorderRadius: row.microlanding_config.button_border_radius,
+  // The view returns camelCase keys, so we can use them directly
+  // But we need to apply defaults for missing values
+  const mc = row.microlanding_config;
+  const defaults = getDefaultMicrolandingConfig();
+  
+  const microlandingConfig: MicrolandingConfig = mc ? {
+    showLogo: mc.showLogo ?? defaults.showLogo,
+    showImage: mc.showImage ?? defaults.showImage,
+    showHeaderText: mc.showHeaderText ?? defaults.showHeaderText,
+    showSubheaderText: mc.showSubheaderText ?? defaults.showSubheaderText,
+    showFooterText: mc.showFooterText ?? defaults.showFooterText,
+    logoUrl: mc.logoUrl ?? defaults.logoUrl,
+    imageUrl: mc.imageUrl ?? defaults.imageUrl,
+    logoSize: (mc.logoSize as MicrolandingConfig['logoSize']) ?? defaults.logoSize,
+    logoGlassmorphism: mc.logoGlassmorphism ?? defaults.logoGlassmorphism,
+    logoGlassOpacity: mc.logoGlassOpacity ?? defaults.logoGlassOpacity,
+    logoVerticalPosition: mc.logoVerticalPosition ?? defaults.logoVerticalPosition,
+    headerText: mc.headerText ?? defaults.headerText,
+    subheaderText: mc.subheaderText ?? defaults.subheaderText,
+    title: mc.title ?? defaults.title,
+    description: mc.description ?? defaults.description,
+    descriptionBold: mc.descriptionBold ?? defaults.descriptionBold,
+    descriptionUnderline: mc.descriptionUnderline ?? defaults.descriptionUnderline,
+    footerText: mc.footerText ?? defaults.footerText,
+    footerTextSize: mc.footerTextSize ?? defaults.footerTextSize,
+    buttonText: mc.buttonText ?? defaults.buttonText,
+    buttonIcon: (mc.buttonIcon as MicrolandingConfig['buttonIcon']) ?? defaults.buttonIcon,
+    buttonBorderRadius: mc.buttonBorderRadius ?? defaults.buttonBorderRadius,
     colors: {
-      primary: row.microlanding_config.color_primary,
-      background: row.microlanding_config.color_background,
-      text: row.microlanding_config.color_text,
-      buttonBackground: row.microlanding_config.color_button_background,
-      buttonText: row.microlanding_config.color_button_text,
+      primary: mc.colors?.primary ?? defaults.colors.primary,
+      background: mc.colors?.background ?? defaults.colors.background,
+      text: mc.colors?.text ?? defaults.colors.text,
+      buttonBackground: mc.colors?.buttonBackground ?? defaults.colors.buttonBackground,
+      buttonText: mc.colors?.buttonText ?? defaults.colors.buttonText,
     },
-  } : getDefaultMicrolandingConfig();
+  } : defaults;
 
-  const facebookPixel: FacebookPixelConfig = row.facebook_pixel ? {
-    pixelId: row.facebook_pixel.pixel_id,
-    viewContentEvent: row.facebook_pixel.view_content_event,
-    leadEvent: row.facebook_pixel.lead_event,
-    customEvents: row.facebook_pixel.custom_events,
-  } : getDefaultFacebookPixelConfig();
+  const fp = row.facebook_pixel;
+  const fpDefaults = getDefaultFacebookPixelConfig();
+  
+  const facebookPixel: FacebookPixelConfig = fp ? {
+    pixelId: fp.pixelId ?? fpDefaults.pixelId,
+    viewContentEvent: fp.viewContentEvent ?? fpDefaults.viewContentEvent,
+    leadEvent: fp.leadEvent ?? fpDefaults.leadEvent,
+    customEvents: fp.customEvents ?? fpDefaults.customEvents,
+  } : fpDefaults;
 
   return {
     id: row.id,
