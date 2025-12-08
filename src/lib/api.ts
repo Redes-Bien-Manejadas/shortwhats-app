@@ -14,12 +14,21 @@ function getBaseUrl() {
     // Client-side: use relative URL
     return '/api';
   }
+  
   // Server-side: use absolute URL
-  // Check for custom port or use environment variable
+  // Priority: NEXT_PUBLIC_APP_URL > VERCEL_URL > localhost
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return `${process.env.NEXT_PUBLIC_APP_URL}/api`;
+  }
+  
+  // Vercel provides VERCEL_URL automatically
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}/api`;
+  }
+  
+  // Local development fallback
   const port = process.env.PORT || '9002';
-  return process.env.NEXT_PUBLIC_APP_URL 
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/api`
-    : `http://localhost:${port}/api`;
+  return `http://localhost:${port}/api`;
 }
 
 // Keep API_BASE_URL for backward compatibility in function calls
