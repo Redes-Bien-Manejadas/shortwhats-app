@@ -2,6 +2,9 @@ import { getAllLinks } from '@/lib/api';
 import { DashboardClient } from '@/components/dashboard/DashboardClient';
 import { LinkData } from '@/lib/types';
 
+// Force dynamic rendering - this page fetches data at request time
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
   // Try to get initial data from server, but don't fail if it doesn't work
   let initialLinks: LinkData[] = [];
