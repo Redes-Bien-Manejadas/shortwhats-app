@@ -1,9 +1,5 @@
-import { neon, neonConfig, NeonQueryFunction } from '@neondatabase/serverless';
+import { neon, NeonQueryFunction } from '@neondatabase/serverless';
 import type { LinkData, MicrolandingConfig, FacebookPixelConfig } from './types';
-
-// Configure Neon for serverless environments (Vercel Edge/Serverless)
-neonConfig.fetchConnectionCache = true;
-neonConfig.poolQueryViaFetch = true; // Use fetch for queries (better for serverless)
 
 // Cache the SQL client to reuse connections
 let sqlClient: NeonQueryFunction<false, false> | null = null;

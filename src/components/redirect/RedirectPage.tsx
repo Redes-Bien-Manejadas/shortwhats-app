@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { FacebookPixel, useFacebookPixel } from '@/components/tracking/FacebookPixel';
@@ -16,33 +16,8 @@ interface RedirectPageProps {
 export function RedirectPage({ targetUrl, slug, message, facebookPixel }: RedirectPageProps) {
   const [countdown, setCountdown] = useState(4);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const hasTrackedClick = useRef(false); // Prevent double-counting
   
-  // Solo usar el hook si hay configuración de pixel
   const { trackEvent } = facebookPixel ? useFacebookPixel(facebookPixel) : { trackEvent: () => {} };
-
-  const handleRedirect = useCallback(() => {
-    // Prevent multiple redirects/tracking
-    if (isRedirecting || hasTrackedClick.current) return;
-    
-    setIsRedirecting(true);
-    hasTrackedClick.current = true;
-    
-    // Disparar evento Lead antes de la redirección
-    if (facebookPixel) {
-      trackEvent('Lead');
-      
-      // Disparar eventos personalizados si existen
-      facebookPixel.customEvents.forEach(eventName => {
-        trackEvent(eventName, true);
-      });
-    }
-    
-    // Increment click count (fire and forget)
-    fetch(`/api/links/${slug}/clicks`, { method: 'POST' }).catch(() => {});
-    
-    window.location.href = targetUrl;
-  }, [isRedirecting, facebookPixel, trackEvent, slug, targetUrl]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -57,7 +32,25 @@ export function RedirectPage({ targetUrl, slug, message, facebookPixel }: Redire
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [handleRedirect]);
+  }, []);
+
+  const handleRedirect = () => {
+    if (isRedirecting) return;
+    setIsRedirecting(true);
+    
+    // Track Facebook Pixel events
+    if (facebookPixel) {
+      trackEvent('Lead');
+      facebookPixel.customEvents.forEach(eventName => {
+        trackEvent(eventName, true);
+      });
+    }
+    
+    // Increment click count (server handles debounce)
+    fetch(`/api/links/${slug}/clicks`, { method: 'POST' }).catch(() => {});
+    
+    window.location.href = targetUrl;
+  };
 
   return (
     <>
