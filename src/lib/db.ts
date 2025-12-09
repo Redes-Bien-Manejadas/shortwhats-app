@@ -1,16 +1,28 @@
-import { neon, neonConfig } from '@neondatabase/serverless';
+import { neon, neonConfig, NeonQueryFunction } from '@neondatabase/serverless';
 import type { LinkData, MicrolandingConfig, FacebookPixelConfig } from './types';
 
-// Configure Neon for serverless environments
+// Configure Neon for serverless environments (Vercel Edge/Serverless)
 neonConfig.fetchConnectionCache = true;
+neonConfig.poolQueryViaFetch = true; // Use fetch for queries (better for serverless)
 
-// Get the SQL client
-function getSQL() {
+// Cache the SQL client to reuse connections
+let sqlClient: NeonQueryFunction<false, false> | null = null;
+
+// Get the SQL client (with connection reuse)
+function getSQL(): NeonQueryFunction<false, false> {
+  if (sqlClient) {
+    return sqlClient;
+  }
+  
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is not set');
   }
-  return neon(databaseUrl);
+  
+  // Create client with retry-friendly settings
+  sqlClient = neon(databaseUrl);
+  
+  return sqlClient;
 }
 
 // =====================================================
@@ -380,25 +392,33 @@ export async function deleteLink(slug: string): Promise<{ success: boolean; mess
   }
 }
 
-export async function incrementClicks(slug: string): Promise<{ success: boolean; clicks?: number }> {
+export async function incrementClicks(slug: string, retries = 2): Promise<{ success: boolean; clicks?: number }> {
   const sql = getSQL();
   
-  try {
-    const result = await sql`
-      UPDATE links SET clicks = clicks + 1
-      WHERE slug = ${slug}
-      RETURNING clicks
-    `;
-    
-    if (result.length === 0) {
-      return { success: false };
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const result = await sql`
+        UPDATE links SET clicks = clicks + 1
+        WHERE slug = ${slug}
+        RETURNING clicks
+      `;
+      
+      if (result.length === 0) {
+        return { success: false };
+      }
+      
+      return { success: true, clicks: result[0].clicks as number };
+    } catch (error) {
+      if (attempt === retries) {
+        console.error('Error incrementing clicks after retries:', error);
+        return { success: false };
+      }
+      // Wait a bit before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)));
     }
-    
-    return { success: true, clicks: result[0].clicks as number };
-  } catch (error) {
-    console.error('Error incrementing clicks:', error);
-    return { success: false };
   }
+  
+  return { success: false };
 }
 
 // =====================================================

@@ -68,10 +68,14 @@ export function MicrolandingPage({ linkData }: { linkData: LinkData }) {
   } : {};
 
   const handleWhatsAppClick = () => {
+    // Track Facebook Pixel events
     trackEvent('Lead');
     facebookPixel.customEvents.forEach(eventName => {
       trackEvent(eventName, true);
     });
+    
+    // Increment click count (fire and forget)
+    fetch(`/api/links/${linkData.slug}/clicks`, { method: 'POST' }).catch(() => {});
   };
 
   return (

@@ -1,4 +1,4 @@
-import { getLinkBySlug, incrementClicks } from '@/lib/db';
+import { getLinkBySlug } from '@/lib/db';
 import { notFound, redirect } from 'next/navigation';
 import { MicrolandingPage } from '@/components/microlanding/MicrolandingPage';
 
@@ -36,12 +36,11 @@ export default async function SlugPage({ params }: Props) {
     notFound();
   }
 
-  // Increment clicks in background (non-blocking)
-  incrementClicks(slug).catch(console.error);
-
+  // For redirect links, go to the redirect page (clicks tracked on button click)
   if (link.type === 'redirect') {
     redirect(`/redirect/${slug}`);
   }
 
+  // For microlanding, render the page (clicks tracked on button click)
   return <MicrolandingPage linkData={link} />;
 }

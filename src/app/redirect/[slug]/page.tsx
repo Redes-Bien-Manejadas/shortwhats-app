@@ -25,6 +25,7 @@ export default async function RedirectPageRoute({ params }: Props) {
   return (
     <RedirectPage 
       targetUrl={whatsappUrl}
+      slug={slug}
       message={link.message}
       facebookPixel={link.facebookPixel}
     />

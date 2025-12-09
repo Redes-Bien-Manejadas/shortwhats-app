@@ -8,11 +8,12 @@ import { FacebookPixelConfig } from '@/lib/types';
 
 interface RedirectPageProps {
   targetUrl: string;
+  slug: string;
   message?: string;
   facebookPixel?: FacebookPixelConfig;
 }
 
-export function RedirectPage({ targetUrl, message, facebookPixel }: RedirectPageProps) {
+export function RedirectPage({ targetUrl, slug, message, facebookPixel }: RedirectPageProps) {
   const [countdown, setCountdown] = useState(4);
   const [isRedirecting, setIsRedirecting] = useState(false);
   
@@ -46,6 +47,9 @@ export function RedirectPage({ targetUrl, message, facebookPixel }: RedirectPage
         trackEvent(eventName, true);
       });
     }
+    
+    // Increment click count (fire and forget)
+    fetch(`/api/links/${slug}/clicks`, { method: 'POST' }).catch(() => {});
     
     window.location.href = targetUrl;
   };
