@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { FacebookPixel, useFacebookPixel } from '@/components/tracking/FacebookPixel';
@@ -16,27 +16,17 @@ interface RedirectPageProps {
 export function RedirectPage({ targetUrl, slug, message, facebookPixel }: RedirectPageProps) {
   const [countdown, setCountdown] = useState(4);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const hasTrackedClick = useRef(false); // Prevent double-counting
   
   // Solo usar el hook si hay configuración de pixel
   const { trackEvent } = facebookPixel ? useFacebookPixel(facebookPixel) : { trackEvent: () => {} };
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleRedirect();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleRedirect = () => {
+  const handleRedirect = useCallback(() => {
+    // Prevent multiple redirects/tracking
+    if (isRedirecting || hasTrackedClick.current) return;
+    
     setIsRedirecting(true);
+    hasTrackedClick.current = true;
     
     // Disparar evento Lead antes de la redirección
     if (facebookPixel) {
@@ -52,7 +42,22 @@ export function RedirectPage({ targetUrl, slug, message, facebookPixel }: Redire
     fetch(`/api/links/${slug}/clicks`, { method: 'POST' }).catch(() => {});
     
     window.location.href = targetUrl;
-  };
+  }, [isRedirecting, facebookPixel, trackEvent, slug, targetUrl]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleRedirect();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [handleRedirect]);
 
   return (
     <>

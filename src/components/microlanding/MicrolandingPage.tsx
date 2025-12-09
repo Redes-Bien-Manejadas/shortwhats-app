@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import type { LinkData } from '@/lib/types';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,7 @@ export function MicrolandingPage({ linkData }: { linkData: LinkData }) {
   const { microlandingConfig, phoneNumber, message, facebookPixel } = linkData;
   const { colors } = microlandingConfig;
   const { trackEvent } = useFacebookPixel(facebookPixel);
+  const hasTrackedClick = useRef(false); // Prevent double-counting
 
   // Tamaños del logo
   const logoSizes = {
@@ -68,6 +69,10 @@ export function MicrolandingPage({ linkData }: { linkData: LinkData }) {
   } : {};
 
   const handleWhatsAppClick = () => {
+    // Prevent double-counting
+    if (hasTrackedClick.current) return;
+    hasTrackedClick.current = true;
+    
     // Track Facebook Pixel events
     trackEvent('Lead');
     facebookPixel.customEvents.forEach(eventName => {
