@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { MicrolandingPage } from '@/components/microlanding/MicrolandingPage';
 
 type Props = {
-  params: Promise<{ slug: string }>;
+  params: { slug: string };
 };
 
 // Revalidate every 60 seconds for ISR (Incremental Static Regeneration)
@@ -11,11 +11,11 @@ export const revalidate = 60;
 
 // Generate dynamic metadata for SEO
 export async function generateMetadata({ params }: Props) {
-  const { slug } = await params;
+  const { slug } = params;
   const link = await getLinkBySlug(slug);
-  
+
   if (!link) return { title: 'Not Found' };
-  
+
   return {
     title: link.microlandingConfig?.title || 'Contáctanos',
     description: link.microlandingConfig?.description || 'Escríbenos por WhatsApp',
@@ -23,12 +23,12 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function SlugPage({ params }: Props) {
-  const { slug } = await params;
+  const { slug } = params;
 
   if (!slug) {
     notFound();
   }
-  
+
   // Direct DB call (faster than going through API route)
   const link = await getLinkBySlug(slug);
 

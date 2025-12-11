@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { FacebookPixel, useFacebookPixel } from '@/components/tracking/FacebookPixel';
+import { FacebookPixel } from '@/components/tracking/FacebookPixel';
 import { FacebookPixelConfig } from '@/lib/types';
 
 interface RedirectPageProps {
@@ -16,8 +16,6 @@ interface RedirectPageProps {
 export function RedirectPage({ targetUrl, slug, message, facebookPixel }: RedirectPageProps) {
   const [countdown, setCountdown] = useState(4);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  
-  const { trackEvent } = facebookPixel ? useFacebookPixel(facebookPixel) : { trackEvent: () => {} };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -38,24 +36,15 @@ export function RedirectPage({ targetUrl, slug, message, facebookPixel }: Redire
     if (isRedirecting) return;
     setIsRedirecting(true);
     
-    // Track Facebook Pixel events
-    if (facebookPixel) {
-      trackEvent('Lead');
-      facebookPixel.customEvents.forEach(eventName => {
-        trackEvent(eventName, true);
-      });
-    }
-    
-    // Increment click count (server handles debounce)
-    fetch(`/api/links/${slug}/clicks`, { method: 'POST' }).catch(() => {});
-    
+    // Note: Tracking is handled by MicrolandingPage to avoid duplicate events
     window.location.href = targetUrl;
   };
 
   return (
     <>
       {/* Facebook Pixel */}
-      {facebookPixel && <FacebookPixel config={facebookPixel} onPageView={true} />}
+      {/* Note: PageView tracking is handled by MicrolandingPage to avoid duplicate events */}
+      {facebookPixel && <FacebookPixel config={facebookPixel} onPageView={false} />}
       
       <div className="min-h-screen relative overflow-hidden font-poppins">
         {/* Fondo de imagen */}
