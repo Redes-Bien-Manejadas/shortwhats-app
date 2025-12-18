@@ -19,38 +19,63 @@ declare global {
 
 export function FacebookPixel({ config, onPageView = false, onLead = false, customEventName }: FacebookPixelProps) {
   const { pixelId, viewContentEvent, leadEvent, customEvents } = config;
-  const eventsFired = useRef(false);
+  const viewContentFired = useRef(false);
+  const leadFired = useRef(false);
+  const customEventFired = useRef<string | null>(null);
 
-  // Function to fire the requested events
-  const fireEvents = useCallback(() => {
-    if (typeof window === 'undefined' || !window.fbq || eventsFired.current) return;
-    eventsFired.current = true;
+  // Function to fire ViewContent event
+  const fireViewContent = useCallback(() => {
+    if (typeof window === 'undefined' || !window.fbq) return;
+    if (viewContentFired.current) return;
+    if (!onPageView || !viewContentEvent) return;
 
-    // Disparar ViewContent si está habilitado y se solicita
-    if (onPageView && viewContentEvent) {
-      window.fbq('track', 'ViewContent');
-      console.log('🎯 Facebook Pixel: ViewContent event fired');
-    }
+    viewContentFired.current = true;
+    window.fbq('track', 'ViewContent');
+    console.log('🎯 Facebook Pixel: ViewContent event fired');
+  }, [onPageView, viewContentEvent]);
 
-    // Disparar Lead si está habilitado y se solicita
-    if (onLead && leadEvent) {
-      window.fbq('track', 'Lead');
-      console.log('🎯 Facebook Pixel: Lead event fired');
-    }
+  // Function to fire Lead event (only after validation)
+  const fireLead = useCallback(() => {
+    if (typeof window === 'undefined' || !window.fbq) return;
+    if (leadFired.current) return;
+    if (!onLead || !leadEvent) return;
 
-    // Disparar evento personalizado si se especifica
-    if (customEventName && customEvents.includes(customEventName)) {
-      window.fbq('trackCustom', customEventName);
-      console.log(`🎯 Facebook Pixel: Custom event ${customEventName} fired`);
-    }
-  }, [onPageView, onLead, customEventName, viewContentEvent, leadEvent, customEvents]);
+    leadFired.current = true;
+    window.fbq('track', 'Lead');
+    console.log('🎯 Facebook Pixel: Lead event fired (after validation)');
+  }, [onLead, leadEvent]);
 
-  // If fbq is already loaded (from previous page), fire events immediately
+  // Function to fire custom event
+  const fireCustomEvent = useCallback(() => {
+    if (typeof window === 'undefined' || !window.fbq) return;
+    if (!customEventName || customEventFired.current === customEventName) return;
+    if (!customEvents.includes(customEventName)) return;
+
+    customEventFired.current = customEventName;
+    window.fbq('trackCustom', customEventName);
+    console.log(`🎯 Facebook Pixel: Custom event ${customEventName} fired`);
+  }, [customEventName, customEvents]);
+
+  // Fire ViewContent on mount if fbq is ready
   useEffect(() => {
     if (typeof window !== 'undefined' && window.fbq) {
-      fireEvents();
+      fireViewContent();
     }
-  }, [fireEvents]);
+  }, [fireViewContent]);
+
+  // Fire Lead when onLead becomes true (after API validation)
+  useEffect(() => {
+    if (onLead && typeof window !== 'undefined' && window.fbq) {
+      fireLead();
+    }
+  }, [onLead, fireLead]);
+
+  // Fire custom event when specified
+  useEffect(() => {
+    if (customEventName && typeof window !== 'undefined' && window.fbq) {
+      fireCustomEvent();
+    }
+  }, [customEventName, fireCustomEvent]);
 
   // No renderizar si no hay pixel ID
   if (!pixelId) return null;
@@ -60,7 +85,11 @@ export function FacebookPixel({ config, onPageView = false, onLead = false, cust
       <Script
         id="facebook-pixel"
         strategy="afterInteractive"
-        onLoad={fireEvents}
+        onLoad={() => {
+          fireViewContent();
+          fireLead();
+          fireCustomEvent();
+        }}
         dangerouslySetInnerHTML={{
           __html: `
             !function(f,b,e,v,n,t,s)
