@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import Script from 'next/script';
 import { FacebookPixelConfig } from '@/lib/types';
 
@@ -19,13 +19,12 @@ declare global {
 
 export function FacebookPixel({ config, onPageView = false, onLead = false, customEventName }: FacebookPixelProps) {
   const { pixelId, viewContentEvent, leadEvent, customEvents } = config;
+  const eventsFired = useRef(false);
 
-  // No renderizar si no hay pixel ID
-  if (!pixelId) return null;
-
-  // Callback que se ejecuta cuando el script termina de cargar
-  const handleScriptLoad = useCallback(() => {
-    if (typeof window === 'undefined' || !window.fbq) return;
+  // Function to fire the requested events
+  const fireEvents = useCallback(() => {
+    if (typeof window === 'undefined' || !window.fbq || eventsFired.current) return;
+    eventsFired.current = true;
 
     // Disparar ViewContent si está habilitado y se solicita
     if (onPageView && viewContentEvent) {
@@ -46,12 +45,22 @@ export function FacebookPixel({ config, onPageView = false, onLead = false, cust
     }
   }, [onPageView, onLead, customEventName, viewContentEvent, leadEvent, customEvents]);
 
+  // If fbq is already loaded (from previous page), fire events immediately
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.fbq) {
+      fireEvents();
+    }
+  }, [fireEvents]);
+
+  // No renderizar si no hay pixel ID
+  if (!pixelId) return null;
+
   return (
     <>
       <Script
         id="facebook-pixel"
         strategy="afterInteractive"
-        onLoad={handleScriptLoad}
+        onLoad={fireEvents}
         dangerouslySetInnerHTML={{
           __html: `
             !function(f,b,e,v,n,t,s)

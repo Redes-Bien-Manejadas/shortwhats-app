@@ -5,7 +5,7 @@ import type { LinkData } from '@/lib/types';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { FacebookPixel, useFacebookPixel } from '@/components/tracking/FacebookPixel';
+import { FacebookPixel } from '@/components/tracking/FacebookPixel';
 import { Phone, MessageCircle } from 'lucide-react';
 
 // WhatsApp SVG icon (inline to avoid external request)
@@ -38,7 +38,6 @@ const getButtonIcon = (iconType: string, size: string = 'default') => {
 export function MicrolandingPage({ linkData }: { linkData: LinkData }) {
   const { microlandingConfig, phoneNumber, message, facebookPixel } = linkData;
   const { colors } = microlandingConfig;
-  const { trackEvent } = useFacebookPixel(facebookPixel);
 
   // Tamaños del logo
   const logoSizes = {
@@ -68,11 +67,8 @@ export function MicrolandingPage({ linkData }: { linkData: LinkData }) {
   } : {};
 
   const handleWhatsAppClick = () => {
-    // Track Facebook Pixel events
-    trackEvent('Lead');
-    facebookPixel.customEvents.forEach(eventName => {
-      trackEvent(eventName, true);
-    });
+    // Note: Facebook Pixel Lead event is fired on RedirectPage to ensure it has time to complete
+    // before the user navigates away to WhatsApp
     
     // Increment click count (server handles debounce)
     fetch(`/api/links/${linkData.slug}/clicks`, { method: 'POST' }).catch(() => {});

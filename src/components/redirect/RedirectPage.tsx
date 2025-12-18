@@ -42,9 +42,8 @@ export function RedirectPage({ targetUrl, slug, message, facebookPixel }: Redire
 
   return (
     <>
-      {/* Facebook Pixel */}
-      {/* Note: PageView tracking is handled by MicrolandingPage to avoid duplicate events */}
-      {facebookPixel && <FacebookPixel config={facebookPixel} onPageView={false} />}
+      {/* Facebook Pixel - Fire Lead event here where we have time before redirect */}
+      {facebookPixel && <FacebookPixel config={facebookPixel} onPageView={true} onLead={true} />}
       
       <div className="min-h-screen relative overflow-hidden font-poppins">
         {/* Fondo de imagen */}
