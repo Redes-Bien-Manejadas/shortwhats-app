@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLinkBySlug, incrementClicks } from '@/lib/db';
+import { verifyRecaptcha, RECAPTCHA_SCORE_THRESHOLD } from '@/lib/recaptcha';
 
 // Rate limiting: max 5 requests per 10 minutes per IP
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -45,7 +46,7 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { slug } = body;
+        const { slug, recaptchaToken } = body;
 
         if (!slug || typeof slug !== 'string') {
             return NextResponse.json(
@@ -77,6 +78,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // reCAPTCHA v3 verification
+        const recaptchaResult = await verifyRecaptcha(recaptchaToken, 'contact_whatsapp');
+
+        if (!recaptchaResult.valid) {
+            console.log(`🤖 Bot detected for IP: ${ip}, score: ${recaptchaResult.score}, error: ${recaptchaResult.error}`);
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Verification failed. Please try again.',
+                    isBot: true,
+                    score: recaptchaResult.score
+                },
+                { status: 403 }
+            );
+        }
+
         // Get link data
         const link = await getLinkBySlug(slug);
 
@@ -93,7 +110,7 @@ export async function POST(request: NextRequest) {
         // Build WhatsApp URL
         const whatsappUrl = `https://wa.me/${link.phoneNumber}${link.message ? `?text=${encodeURIComponent(link.message)}` : ''}`;
 
-        console.log(`✅ Validated contact request for slug: ${slug}, IP: ${ip}`);
+        console.log(`✅ Validated contact request for slug: ${slug}, IP: ${ip}, reCAPTCHA score: ${recaptchaResult.score}`);
 
         // Return success with WhatsApp URL - Lead event should be fired AFTER this succeeds
         return NextResponse.json({

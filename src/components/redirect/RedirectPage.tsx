@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { FacebookPixel } from '@/components/tracking/FacebookPixel';
 import { FacebookPixelConfig } from '@/lib/types';
+import { RecaptchaProvider, useRecaptcha } from '@/components/recaptcha/RecaptchaProvider';
 
 interface RedirectPageProps {
   targetUrl: string;
@@ -13,23 +14,28 @@ interface RedirectPageProps {
   facebookPixel?: FacebookPixelConfig;
 }
 
-export function RedirectPage({ targetUrl, slug, message, facebookPixel }: RedirectPageProps) {
+function RedirectPageContent({ targetUrl, slug, message, facebookPixel }: RedirectPageProps) {
   const [countdown, setCountdown] = useState(4);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isValidated, setIsValidated] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isBotDetected, setIsBotDetected] = useState(false);
   const validationAttempted = useRef(false);
+  const { isReady: recaptchaReady, executeRecaptcha } = useRecaptcha();
 
-  // Validate the contact request via API (rate limiting + validation)
+  // Validate the contact request via API (rate limiting + reCAPTCHA)
   const validateContact = useCallback(async () => {
     if (validationAttempted.current) return;
     validationAttempted.current = true;
 
     try {
+      // Get reCAPTCHA token
+      const recaptchaToken = await executeRecaptcha('contact_whatsapp');
+
       const response = await fetch('/api/contact/whatsapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug }),
+        body: JSON.stringify({ slug, recaptchaToken }),
       });
 
       const data = await response.json();
@@ -40,6 +46,10 @@ export function RedirectPage({ targetUrl, slug, message, facebookPixel }: Redire
       } else if (response.status === 429) {
         setValidationError('Demasiados intentos. Por favor espera unos minutos.');
         console.log('🚫 Rate limited');
+      } else if (response.status === 403 && data.isBot) {
+        setIsBotDetected(true);
+        setValidationError('Verificación fallida.');
+        console.log('🤖 Bot detected, score:', data.score);
       } else {
         setValidationError(data.error || 'Error de validación');
         console.log('❌ Validation failed:', data.error);
@@ -49,12 +59,14 @@ export function RedirectPage({ targetUrl, slug, message, facebookPixel }: Redire
       // On network error, still allow redirect but don't fire Lead
       setValidationError('Error de conexión');
     }
-  }, [slug]);
+  }, [slug, executeRecaptcha]);
 
-  // Validate on mount
+  // Validate when reCAPTCHA is ready
   useEffect(() => {
-    validateContact();
-  }, [validateContact]);
+    if (recaptchaReady) {
+      validateContact();
+    }
+  }, [recaptchaReady, validateContact]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -75,8 +87,8 @@ export function RedirectPage({ targetUrl, slug, message, facebookPixel }: Redire
     if (isRedirecting) return;
     setIsRedirecting(true);
 
-    // Only redirect if not rate limited
-    if (!validationError || !validationError.includes('Demasiados')) {
+    // Only redirect if not rate limited or bot detected
+    if (!validationError || (!validationError.includes('Demasiados') && !isBotDetected)) {
       window.location.href = targetUrl;
     }
   };
@@ -92,6 +104,16 @@ export function RedirectPage({ targetUrl, slug, message, facebookPixel }: Redire
           <div className="bg-white rounded-lg p-6 max-w-sm mx-4 text-center">
             <p className="text-red-600 font-semibold mb-2">⚠️ Demasiados intentos</p>
             <p className="text-gray-600">Por favor espera unos minutos antes de intentar nuevamente.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Show bot detection error */}
+      {isBotDetected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg p-6 max-w-sm mx-4 text-center">
+            <p className="text-red-600 font-semibold mb-2">🤖 Verificación fallida</p>
+            <p className="text-gray-600">No pudimos verificar que eres una persona real. Por favor intenta de nuevo.</p>
           </div>
         </div>
       )}
@@ -191,5 +213,13 @@ export function RedirectPage({ targetUrl, slug, message, facebookPixel }: Redire
         </div>
       </div>
     </>
+  );
+}
+
+export function RedirectPage(props: RedirectPageProps) {
+  return (
+    <RecaptchaProvider>
+      <RedirectPageContent {...props} />
+    </RecaptchaProvider>
   );
 }
