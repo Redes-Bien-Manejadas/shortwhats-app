@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
             console.log(`🚫 Rate limit exceeded for IP: ${ip}`);
 
             // Log rate limit bot detection
-            logBotDetection({
+            await logBotDetection({
                 ipAddress: ip,
                 slug,
                 userAgent,
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
             console.log(`🤖 WebDriver detected for IP: ${ip}`);
 
             // Log WebDriver bot detection
-            logBotDetection({
+            await logBotDetection({
                 ipAddress: ip,
                 slug,
                 userAgent,
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
             console.log(`🤖 Bot detected for IP: ${ip}, reCAPTCHA score: ${recaptchaResult.score}, client score: ${botSignals?.score ?? 'N/A'}, error: ${recaptchaResult.error}`);
 
             // Log reCAPTCHA bot detection
-            logBotDetection({
+            await logBotDetection({
                 ipAddress: ip,
                 slug,
                 userAgent,
