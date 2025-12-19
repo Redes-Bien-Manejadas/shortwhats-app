@@ -123,6 +123,35 @@ CREATE TABLE IF NOT EXISTS file_uploads (
 CREATE INDEX IF NOT EXISTS idx_file_uploads_created_at ON file_uploads(created_at DESC);
 
 -- =====================================================
+-- BOT DETECTIONS TABLE
+-- Stores records of detected bot activity for analysis
+-- =====================================================
+CREATE TABLE IF NOT EXISTS bot_detections (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    
+    -- Request info
+    ip_address VARCHAR(45) NOT NULL,
+    slug VARCHAR(255),
+    user_agent TEXT,
+    
+    -- Detection details
+    detection_type VARCHAR(50) NOT NULL,
+    recaptcha_score DECIMAL(3,2),
+    client_bot_score DECIMAL(3,2),
+    is_webdriver BOOLEAN DEFAULT false,
+    error_message TEXT,
+    
+    -- Metadata
+    request_headers JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_bot_detections_ip ON bot_detections(ip_address);
+CREATE INDEX IF NOT EXISTS idx_bot_detections_created_at ON bot_detections(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_bot_detections_type ON bot_detections(detection_type);
+CREATE INDEX IF NOT EXISTS idx_bot_detections_slug ON bot_detections(slug);
+
+-- =====================================================
 -- UPDATED_AT TRIGGER FUNCTION
 -- Automatically updates the updated_at column
 -- =====================================================
