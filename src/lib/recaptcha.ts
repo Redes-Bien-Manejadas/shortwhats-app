@@ -5,8 +5,9 @@ const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
 const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 
 // Minimum score to consider a user as human (0.0 = bot, 1.0 = human)
-// 0.5 is Google's recommended threshold, but you can adjust based on your needs
-export const RECAPTCHA_SCORE_THRESHOLD = 0.5;
+// 0.5 is Google's default, but we use 0.7 to block more automated browsers
+// Puppeteer/Playwright typically score 0.1-0.5, real users score 0.7-0.9
+export const RECAPTCHA_SCORE_THRESHOLD = 0.7;
 
 export interface RecaptchaVerifyResponse {
     success: boolean;

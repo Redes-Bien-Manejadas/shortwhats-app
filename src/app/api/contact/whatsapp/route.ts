@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLinkBySlug, incrementClicks } from '@/lib/db';
-import { verifyRecaptcha, RECAPTCHA_SCORE_THRESHOLD } from '@/lib/recaptcha';
+import { getLinkBySlug, incrementClicks, logBotDetection } from '@/lib/db';
+import { verifyRecaptcha } from '@/lib/recaptcha';
 
 // Rate limiting: max 5 requests per 10 minutes per IP
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -46,7 +46,7 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { slug, recaptchaToken } = body;
+        const { slug, recaptchaToken, botSignals } = body;
 
         if (!slug || typeof slug !== 'string') {
             return NextResponse.json(
@@ -59,8 +59,20 @@ export async function POST(request: NextRequest) {
         const ip = getRateLimitKey(request);
         const rateLimit = checkRateLimit(ip);
 
+        const userAgent = request.headers.get('user-agent') || undefined;
+
         if (!rateLimit.allowed) {
             console.log(`🚫 Rate limit exceeded for IP: ${ip}`);
+
+            // Log rate limit bot detection
+            logBotDetection({
+                ipAddress: ip,
+                slug,
+                userAgent,
+                detectionType: 'rate_limit',
+                errorMessage: 'Rate limit exceeded'
+            });
+
             return NextResponse.json(
                 {
                     success: false,
@@ -78,11 +90,50 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Check client-side bot signals first (catches Puppeteer/Playwright)
+        if (botSignals?.isWebdriver) {
+            console.log(`🤖 WebDriver detected for IP: ${ip}`);
+
+            // Log WebDriver bot detection
+            logBotDetection({
+                ipAddress: ip,
+                slug,
+                userAgent,
+                detectionType: 'webdriver',
+                clientBotScore: botSignals?.score,
+                isWebdriver: true,
+                errorMessage: 'WebDriver detected'
+            });
+
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Verification failed. Please try again.',
+                    isBot: true,
+                    score: 0
+                },
+                { status: 403 }
+            );
+        }
+
         // reCAPTCHA v3 verification
         const recaptchaResult = await verifyRecaptcha(recaptchaToken, 'contact_whatsapp');
 
         if (!recaptchaResult.valid) {
-            console.log(`🤖 Bot detected for IP: ${ip}, score: ${recaptchaResult.score}, error: ${recaptchaResult.error}`);
+            console.log(`🤖 Bot detected for IP: ${ip}, reCAPTCHA score: ${recaptchaResult.score}, client score: ${botSignals?.score ?? 'N/A'}, error: ${recaptchaResult.error}`);
+
+            // Log reCAPTCHA bot detection
+            logBotDetection({
+                ipAddress: ip,
+                slug,
+                userAgent,
+                detectionType: 'recaptcha',
+                recaptchaScore: recaptchaResult.score,
+                clientBotScore: botSignals?.score,
+                isWebdriver: botSignals?.isWebdriver ?? false,
+                errorMessage: recaptchaResult.error
+            });
+
             return NextResponse.json(
                 {
                     success: false,

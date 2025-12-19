@@ -9,15 +9,15 @@ function getSQL(): NeonQueryFunction<false, false> {
   if (sqlClient) {
     return sqlClient;
   }
-  
+
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is not set');
   }
-  
+
   // Create client with retry-friendly settings
   sqlClient = neon(databaseUrl);
-  
+
   return sqlClient;
 }
 
@@ -87,7 +87,7 @@ function dbToLinkData(row: DBLinkComplete): LinkData {
   // But we need to apply defaults for missing values
   const mc = row.microlanding_config;
   const defaults = getDefaultMicrolandingConfig();
-  
+
   const microlandingConfig: MicrolandingConfig = mc ? {
     showLogo: mc.showLogo ?? defaults.showLogo,
     showImage: mc.showImage ?? defaults.showImage,
@@ -122,7 +122,7 @@ function dbToLinkData(row: DBLinkComplete): LinkData {
 
   const fp = row.facebook_pixel;
   const fpDefaults = getDefaultFacebookPixelConfig();
-  
+
   const facebookPixel: FacebookPixelConfig = fp ? {
     pixelId: fp.pixelId ?? fpDefaults.pixelId,
     viewContentEvent: fp.viewContentEvent ?? fpDefaults.viewContentEvent,
@@ -193,57 +193,57 @@ function getDefaultFacebookPixelConfig(): FacebookPixelConfig {
 
 export async function getAllLinks(): Promise<LinkData[]> {
   const sql = getSQL();
-  
+
   const rows = await sql`
     SELECT * FROM links_complete 
     ORDER BY created_at DESC
   `;
-  
+
   return rows.map((row) => dbToLinkData(row as unknown as DBLinkComplete));
 }
 
 export async function getLinkBySlug(slug: string): Promise<LinkData | null> {
   const sql = getSQL();
-  
+
   const rows = await sql`
     SELECT * FROM links_complete 
     WHERE slug = ${slug}
     LIMIT 1
   `;
-  
+
   if (rows.length === 0) {
     return null;
   }
-  
+
   return dbToLinkData(rows[0] as unknown as DBLinkComplete);
 }
 
 export async function getLinkById(id: string): Promise<LinkData | null> {
   const sql = getSQL();
-  
+
   const rows = await sql`
     SELECT * FROM links_complete 
     WHERE id = ${id}
     LIMIT 1
   `;
-  
+
   if (rows.length === 0) {
     return null;
   }
-  
+
   return dbToLinkData(rows[0] as unknown as DBLinkComplete);
 }
 
 export async function createLink(linkData: LinkData): Promise<{ success: boolean; message: string; id?: string }> {
   const sql = getSQL();
-  
+
   try {
     // Check if slug already exists
     const existing = await sql`SELECT id FROM links WHERE slug = ${linkData.slug}`;
     if (existing.length > 0) {
       return { success: false, message: 'El slug ya existe' };
     }
-    
+
     // Insert link
     const linkResult = await sql`
       INSERT INTO links (slug, phone_number, message, type, clicks, tags)
@@ -257,9 +257,9 @@ export async function createLink(linkData: LinkData): Promise<{ success: boolean
       )
       RETURNING id
     `;
-    
+
     const linkId = linkResult[0].id;
-    
+
     // Insert microlanding config
     const mc = linkData.microlandingConfig;
     await sql`
@@ -278,14 +278,14 @@ export async function createLink(linkData: LinkData): Promise<{ success: boolean
         ${mc.colors.primary}, ${mc.colors.background}, ${mc.colors.text}, ${mc.colors.buttonBackground}, ${mc.colors.buttonText}
       )
     `;
-    
+
     // Insert facebook pixel config
     const fp = linkData.facebookPixel;
     await sql`
       INSERT INTO facebook_pixel_configs (link_id, pixel_id, view_content_event, lead_event, custom_events)
       VALUES (${linkId}, ${fp.pixelId}, ${fp.viewContentEvent}, ${fp.leadEvent}, ${fp.customEvents || []})
     `;
-    
+
     return { success: true, message: 'Link creado correctamente', id: linkId };
   } catch (error) {
     console.error('Error creating link:', error);
@@ -295,16 +295,16 @@ export async function createLink(linkData: LinkData): Promise<{ success: boolean
 
 export async function updateLink(slug: string, linkData: LinkData): Promise<{ success: boolean; message: string }> {
   const sql = getSQL();
-  
+
   try {
     // Get link ID
     const linkRows = await sql`SELECT id FROM links WHERE slug = ${slug}`;
     if (linkRows.length === 0) {
       return { success: false, message: 'Link no encontrado' };
     }
-    
+
     const linkId = linkRows[0].id;
-    
+
     // Update link
     await sql`
       UPDATE links SET
@@ -315,7 +315,7 @@ export async function updateLink(slug: string, linkData: LinkData): Promise<{ su
         tags = ${linkData.tags || []}
       WHERE id = ${linkId}
     `;
-    
+
     // Update microlanding config
     const mc = linkData.microlandingConfig;
     await sql`
@@ -349,7 +349,7 @@ export async function updateLink(slug: string, linkData: LinkData): Promise<{ su
         color_button_text = ${mc.colors.buttonText}
       WHERE link_id = ${linkId}
     `;
-    
+
     // Update facebook pixel config
     const fp = linkData.facebookPixel;
     await sql`
@@ -360,7 +360,7 @@ export async function updateLink(slug: string, linkData: LinkData): Promise<{ su
         custom_events = ${fp.customEvents || []}
       WHERE link_id = ${linkId}
     `;
-    
+
     return { success: true, message: 'Link actualizado correctamente' };
   } catch (error) {
     console.error('Error updating link:', error);
@@ -370,17 +370,17 @@ export async function updateLink(slug: string, linkData: LinkData): Promise<{ su
 
 export async function deleteLink(slug: string): Promise<{ success: boolean; message: string }> {
   const sql = getSQL();
-  
+
   try {
     const result = await sql`
       DELETE FROM links WHERE slug = ${slug}
       RETURNING id
     `;
-    
+
     if (result.length === 0) {
       return { success: false, message: 'Link no encontrado' };
     }
-    
+
     return { success: true, message: 'Link eliminado correctamente' };
   } catch (error) {
     console.error('Error deleting link:', error);
@@ -390,7 +390,7 @@ export async function deleteLink(slug: string): Promise<{ success: boolean; mess
 
 export async function incrementClicks(slug: string, retries = 2): Promise<{ success: boolean; clicks?: number }> {
   const sql = getSQL();
-  
+
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const result = await sql`
@@ -398,11 +398,11 @@ export async function incrementClicks(slug: string, retries = 2): Promise<{ succ
         WHERE slug = ${slug}
         RETURNING clicks
       `;
-      
+
       if (result.length === 0) {
         return { success: false };
       }
-      
+
       return { success: true, clicks: result[0].clicks as number };
     } catch (error) {
       if (attempt === retries) {
@@ -413,7 +413,7 @@ export async function incrementClicks(slug: string, retries = 2): Promise<{ succ
       await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)));
     }
   }
-  
+
   return { success: false };
 }
 
@@ -423,17 +423,17 @@ export async function incrementClicks(slug: string, retries = 2): Promise<{ succ
 
 export async function getAdminCredentials(): Promise<{ username: string; password: string } | null> {
   const sql = getSQL();
-  
+
   try {
     const rows = await sql`
       SELECT username, password_hash as password FROM admin_credentials
       LIMIT 1
     `;
-    
+
     if (rows.length === 0) {
       return null;
     }
-    
+
     return {
       username: rows[0].username as string,
       password: rows[0].password as string,
@@ -446,7 +446,7 @@ export async function getAdminCredentials(): Promise<{ username: string; passwor
 
 export async function saveAdminCredentials(username: string, passwordHash: string): Promise<{ success: boolean; message: string }> {
   const sql = getSQL();
-  
+
   try {
     // Upsert - insert or update
     await sql`
@@ -455,7 +455,7 @@ export async function saveAdminCredentials(username: string, passwordHash: strin
       ON CONFLICT (username) DO UPDATE SET
         password_hash = ${passwordHash}
     `;
-    
+
     return { success: true, message: 'Credenciales guardadas correctamente' };
   } catch (error) {
     console.error('Error saving admin credentials:', error);
@@ -464,14 +464,105 @@ export async function saveAdminCredentials(username: string, passwordHash: strin
 }
 
 // =====================================================
+// BOT DETECTIONS
+// =====================================================
+
+export interface BotDetectionRecord {
+  ipAddress: string;
+  slug?: string;
+  userAgent?: string;
+  detectionType: 'recaptcha' | 'webdriver' | 'rate_limit';
+  recaptchaScore?: number;
+  clientBotScore?: number;
+  isWebdriver?: boolean;
+  errorMessage?: string;
+  requestHeaders?: Record<string, string>;
+}
+
+export async function logBotDetection(detection: BotDetectionRecord): Promise<void> {
+  const sql = getSQL();
+
+  try {
+    await sql`
+      INSERT INTO bot_detections (
+        ip_address,
+        slug,
+        user_agent,
+        detection_type,
+        recaptcha_score,
+        client_bot_score,
+        is_webdriver,
+        error_message,
+        request_headers
+      ) VALUES (
+        ${detection.ipAddress},
+        ${detection.slug ?? null},
+        ${detection.userAgent ?? null},
+        ${detection.detectionType},
+        ${detection.recaptchaScore ?? null},
+        ${detection.clientBotScore ?? null},
+        ${detection.isWebdriver ?? false},
+        ${detection.errorMessage ?? null},
+        ${detection.requestHeaders ? JSON.stringify(detection.requestHeaders) : null}
+      )
+    `;
+  } catch (error) {
+    // Don't throw - logging should not break the main flow
+    console.error('Error logging bot detection:', error);
+  }
+}
+
+export async function getBotDetections(limit: number = 100): Promise<any[]> {
+  const sql = getSQL();
+
+  const rows = await sql`
+    SELECT * FROM bot_detections
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `;
+
+  return rows;
+}
+
+export async function getBotDetectionStats(): Promise<{
+  total: number;
+  byType: Record<string, number>;
+  last24h: number;
+}> {
+  const sql = getSQL();
+
+  const [totalResult] = await sql`SELECT COUNT(*) as count FROM bot_detections`;
+  const [last24hResult] = await sql`
+    SELECT COUNT(*) as count FROM bot_detections 
+    WHERE created_at > NOW() - INTERVAL '24 hours'
+  `;
+  const byTypeRows = await sql`
+    SELECT detection_type, COUNT(*) as count 
+    FROM bot_detections 
+    GROUP BY detection_type
+  `;
+
+  const byType: Record<string, number> = {};
+  for (const row of byTypeRows) {
+    byType[row.detection_type as string] = Number(row.count);
+  }
+
+  return {
+    total: Number(totalResult.count),
+    byType,
+    last24h: Number(last24hResult.count)
+  };
+}
+
+// =====================================================
 // SEARCH
 // =====================================================
 
 export async function searchLinks(term: string): Promise<LinkData[]> {
   const sql = getSQL();
-  
+
   const searchPattern = `%${term}%`;
-  
+
   const rows = await sql`
     SELECT * FROM links_complete 
     WHERE 
@@ -480,6 +571,6 @@ export async function searchLinks(term: string): Promise<LinkData[]> {
       message ILIKE ${searchPattern}
     ORDER BY created_at DESC
   `;
-  
+
   return rows.map((row) => dbToLinkData(row as unknown as DBLinkComplete));
 }
