@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { FacebookPixel } from '@/components/tracking/FacebookPixel';
 import { FacebookPixelConfig } from '@/lib/types';
 import { RecaptchaProvider, useRecaptcha } from '@/components/recaptcha/RecaptchaProvider';
+import { detectBotSignals } from '@/lib/bot-detection';
 
 interface RedirectPageProps {
   targetUrl: string;
@@ -32,10 +33,20 @@ function RedirectPageContent({ targetUrl, slug, message, facebookPixel }: Redire
       // Get reCAPTCHA token
       const recaptchaToken = await executeRecaptcha('contact_whatsapp');
 
+      // Get client-side bot detection signals
+      const botSignals = detectBotSignals();
+
       const response = await fetch('/api/contact/whatsapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, recaptchaToken }),
+        body: JSON.stringify({
+          slug,
+          recaptchaToken,
+          botSignals: {
+            isWebdriver: botSignals.isWebdriver,
+            score: botSignals.score
+          }
+        }),
       });
 
       const data = await response.json();
